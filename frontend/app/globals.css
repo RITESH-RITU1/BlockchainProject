@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --color-stone-200: #e7e5e4;
+  --color-stone-800: #292524;
+  --color-stone-900: #1c1917;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #d97706;
+  --color-amber-950: #451a03;
+  --color-orange-600: #ea580c;
+  --color-orange-700: #c2410c;
+  --color-orange-950: #431407;
+  --color-emerald-600: #059669;
+  --color-emerald-700: #047857;
+  --color-red-300: #fca5a5;
+  --color-red-950: #450a0a;
+}
+
+@layer base {
+  body {
+    @apply bg-stone-900 text-stone-200;
+  }
+  * {
+    @apply border-stone-800;
+  }
+}
+
+@layer components {
+  .btn-client {
+    @apply bg-amber-500 text-stone-900 hover:bg-amber-600 focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-stone-900 disabled:opacity-50 disabled:cursor-not-allowed h-10 px-4 py-2 rounded-md font-medium transition-colors;
+  }
+
+  .btn-freelancer {
+    @apply bg-orange-600 text-stone-200 hover:bg-orange-700 focus:ring-2 focus:ring-orange-600 focus:ring-offset-2 focus:ring-offset-stone-900 disabled:opacity-50 disabled:cursor-not-allowed h-10 px-4 py-2 rounded-md font-medium transition-colors;
+  }
+
+  .btn-success {
+    @apply bg-emerald-600 text-stone-200 hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2 focus:ring-offset-stone-900 disabled:opacity-50 disabled:cursor-not-allowed h-10 px-4 py-2 rounded-md font-medium transition-colors;
+  }
+  
+  .card-error {
+    @apply bg-red-950/40 text-red-300 border border-red-900 rounded-lg p-4;
+  }
+
+  .panel-header-client {
+    @apply bg-amber-950/30 text-amber-500 p-4 border-b border-stone-800 rounded-t-lg;
+  }
+
+  .panel-header-freelancer {
+    @apply bg-orange-950/30 text-orange-500 p-4 border-b border-stone-800 rounded-t-lg;
+  }
+
+  .card {
+    @apply bg-stone-800/50 shadow-sm border border-stone-800 rounded-lg;
+  }
+
+  .input {
+    @apply flex h-10 w-full rounded-md border border-stone-700 bg-stone-900 px-3 py-2 text-sm placeholder:text-stone-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .label {
+    @apply text-sm font-medium leading-none text-stone-300;
+  }
+}

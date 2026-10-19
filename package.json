@@ -1,0 +1,28 @@
+{
+  "name": "clearescrow",
+  "version": "1.0.0",
+  "description": "A secure, blockchain-based escrow platform that revolutionizes freelance payments through smart contract automation and milestone-based deliverables.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/deekshahere555/ClearEscrow.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/deekshahere555/ClearEscrow/issues"
+  },
+  "homepage": "https://github.com/deekshahere555/ClearEscrow#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "^4.0.15",
+    "@nomicfoundation/hardhat-toolbox": "^7.0.0",
+    "dotenv": "^17.4.2",
+    "ethers": "^6.17.0",
+    "hardhat": "^3.16.0"
+  },
+  "type": "module"
+}
