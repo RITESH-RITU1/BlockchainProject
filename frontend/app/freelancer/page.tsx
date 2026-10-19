@@ -11,7 +11,9 @@ import {
   checkCurrentSubscription,
   subscribeToPush,
   unsubscribeFromPush,
+  getDetailedPushStatus,
   type PushPermissionState,
+  type PushStatusState,
 } from "@/lib/pushClient";
 import {
   Send,
@@ -190,8 +192,9 @@ export default function FreelancerPage() {
   const [bio, setBio] = useState("");
   const [skills, setSkills] = useState("");
   const [hourlyRate, setHourlyRate] = useState("");
-  const [pushState, setPushState] = useState<PushPermissionState>("default");
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [pushStatus, setPushStatus] = useState<PushStatusState>("checking");
+  const [pushErrorMessage, setPushErrorMessage] = useState<string>("");
+  const [pushToggling, setPushToggling] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMessage, setProfileMessage] = useState("");
 
@@ -202,12 +205,25 @@ export default function FreelancerPage() {
   // Available jobs preview
   const [recentJobs, setRecentJobs] = useState<any[]>([]);
 
+  // Function to refresh push status accurately
+  const refreshPushStatus = async (userAddress?: string) => {
+    try {
+      const res = await getDetailedPushStatus(userAddress);
+      setPushStatus(res.status);
+      if (res.errorMessage) {
+        setPushErrorMessage(res.errorMessage);
+      } else {
+        setPushErrorMessage("");
+      }
+    } catch {
+      setPushStatus("error");
+      setPushErrorMessage("Failed to check push notification status.");
+    }
+  };
+
   useEffect(() => {
-    // Check push support and current subscription
-    setPushState(getPushPermissionState());
-    checkCurrentSubscription().then((sub) => {
-      setIsSubscribed(Boolean(sub));
-    });
+    // Initial check on mount
+    refreshPushStatus(address);
 
     // Load recent available jobs
     fetch("/api/jobs?status=open")
@@ -216,9 +232,15 @@ export default function FreelancerPage() {
       .catch(() => {});
   }, []);
 
-  // Fetch freelancer profile when wallet connects
+  // Sync push status and profile whenever address changes
   useEffect(() => {
-    if (!address) return;
+    if (!address) {
+      refreshPushStatus();
+      return;
+    }
+
+    refreshPushStatus(address);
+
     fetch(`/api/freelancers/profile?address=${address.toLowerCase()}`)
       .then((res) => res.json())
       .then((data) => {
@@ -249,20 +271,31 @@ export default function FreelancerPage() {
       return;
     }
 
-    if (isSubscribed) {
-      const res = await unsubscribeFromPush(address);
-      if (res.success) {
-        setIsSubscribed(false);
-        setPushState(getPushPermissionState());
-      }
-    } else {
-      const res = await subscribeToPush(address);
-      if (res.success) {
-        setIsSubscribed(true);
-        setPushState(getPushPermissionState());
+    setPushToggling(true);
+    setPushErrorMessage("");
+
+    try {
+      if (pushStatus === "enabled") {
+        const res = await unsubscribeFromPush(address);
+        if (res.success) {
+          setPushStatus("disabled");
+        } else {
+          setPushErrorMessage("Failed to remove push subscription on server.");
+        }
       } else {
-        alert(res.error || "Could not enable push notifications.");
+        const res = await subscribeToPush(address);
+        if (res.success) {
+          setPushStatus("enabled");
+        } else {
+          setPushStatus(Notification.permission === "denied" ? "denied" : "error");
+          setPushErrorMessage(res.error || "Could not enable push notifications.");
+        }
       }
+    } catch (err: any) {
+      setPushStatus("error");
+      setPushErrorMessage(err.message || "An unexpected error occurred.");
+    } finally {
+      setPushToggling(false);
     }
   };
 
@@ -294,7 +327,7 @@ export default function FreelancerPage() {
           bio,
           skills: skillsArray,
           hourly_rate: hourlyRate,
-          notify_push: isSubscribed,
+          notify_push: pushStatus === "enabled",
           notify_in_app: true,
         }),
       });
@@ -324,11 +357,23 @@ export default function FreelancerPage() {
           </div>
 
           {/* Web Push Notification Indicator */}
-          <div className="bg-stone-900 border border-stone-800 rounded-xl p-3.5 flex items-center justify-between gap-4 min-w-[240px]">
+          <div className="bg-stone-900 border border-stone-800 rounded-xl p-3.5 flex items-center justify-between gap-4 min-w-[270px]">
             <div className="flex items-center gap-2.5">
-              {isSubscribed ? (
+              {pushStatus === "enabled" ? (
                 <div className="p-2 bg-emerald-500/15 rounded-lg text-emerald-400 border border-emerald-500/30">
                   <Bell className="h-4 w-4" />
+                </div>
+              ) : pushStatus === "checking" ? (
+                <div className="p-2 bg-stone-800 rounded-lg text-stone-400 border border-stone-700">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                </div>
+              ) : pushStatus === "denied" ? (
+                <div className="p-2 bg-red-950/40 rounded-lg text-red-400 border border-red-800/50">
+                  <BellOff className="h-4 w-4" />
+                </div>
+              ) : pushStatus === "error" ? (
+                <div className="p-2 bg-amber-950/40 rounded-lg text-amber-400 border border-amber-800/50">
+                  <AlertCircle className="h-4 w-4" />
                 </div>
               ) : (
                 <div className="p-2 bg-stone-800 rounded-lg text-stone-500 border border-stone-700">
@@ -337,23 +382,68 @@ export default function FreelancerPage() {
               )}
               <div>
                 <span className="text-[10px] text-stone-500 uppercase tracking-wider block font-semibold">Job Push Alerts</span>
-                <span className={`text-xs font-bold ${isSubscribed ? "text-emerald-400" : "text-stone-400"}`}>
-                  {isSubscribed ? "Enabled" : pushState === "denied" ? "Blocked in Browser" : "Disabled"}
+                <span
+                  className={`text-xs font-bold ${
+                    pushStatus === "enabled"
+                      ? "text-emerald-400"
+                      : pushStatus === "denied"
+                      ? "text-red-400"
+                      : pushStatus === "setup_required"
+                      ? "text-amber-400"
+                      : pushStatus === "error"
+                      ? "text-rose-400"
+                      : pushStatus === "checking"
+                      ? "text-stone-400"
+                      : "text-stone-400"
+                  }`}
+                >
+                  {pushStatus === "enabled" && "Enabled"}
+                  {pushStatus === "disabled" && "Disabled"}
+                  {pushStatus === "denied" && "Permission denied"}
+                  {pushStatus === "setup_required" && "Setup required"}
+                  {pushStatus === "error" && "Error"}
+                  {pushStatus === "checking" && "Checking…"}
                 </span>
+                {pushErrorMessage && (
+                  <span className="text-[10px] text-stone-400 block max-w-[150px] truncate" title={pushErrorMessage}>
+                    {pushErrorMessage}
+                  </span>
+                )}
               </div>
             </div>
 
-            <button
-              onClick={handleTogglePush}
-              disabled={pushState === "unsupported" || !address}
-              className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
-                isSubscribed
-                  ? "bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700"
-                  : "bg-orange-600 hover:bg-orange-500 text-stone-100"
-              }`}
-            >
-              {isSubscribed ? "Disable" : "Enable"}
-            </button>
+            {pushStatus === "denied" ? (
+              <span className="text-[11px] text-stone-500 italic max-w-[90px] text-right" title="Unblock in your browser address bar site settings">
+                Unblock in browser
+              </span>
+            ) : pushStatus === "setup_required" ? (
+              <button
+                onClick={() => refreshPushStatus(address)}
+                className="text-xs font-bold px-2.5 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700"
+              >
+                Retry
+              </button>
+            ) : (
+              <button
+                onClick={handleTogglePush}
+                disabled={pushToggling || pushStatus === "checking" || !address}
+                className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                  pushStatus === "enabled"
+                    ? "bg-stone-800 hover:bg-stone-700 text-stone-300 border border-stone-700"
+                    : "bg-orange-600 hover:bg-orange-500 text-stone-100 disabled:opacity-50"
+                }`}
+              >
+                {pushToggling ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : pushStatus === "enabled" ? (
+                  "Disable"
+                ) : pushStatus === "error" ? (
+                  "Retry"
+                ) : (
+                  "Enable"
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -570,13 +660,20 @@ export default function FreelancerPage() {
                 <button
                   type="button"
                   onClick={handleTogglePush}
-                  className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
-                    isSubscribed
+                  disabled={pushToggling || pushStatus === "checking" || !address || pushStatus === "denied"}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
+                    pushStatus === "enabled"
                       ? "bg-stone-800 text-stone-300 border border-stone-700 hover:bg-stone-700"
-                      : "bg-orange-600 text-stone-100 hover:bg-orange-500"
+                      : "bg-orange-600 text-stone-100 hover:bg-orange-500 disabled:opacity-50"
                   }`}
                 >
-                  {isSubscribed ? "Unsubscribe" : "Opt In to Push"}
+                  {pushToggling ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : pushStatus === "enabled" ? (
+                    "Unsubscribe"
+                  ) : (
+                    "Opt In to Push"
+                  )}
                 </button>
               </div>
 

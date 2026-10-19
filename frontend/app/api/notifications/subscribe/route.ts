@@ -57,6 +57,47 @@ export async function POST(req: Request) {
   }
 }
 
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const address = searchParams.get("address");
+
+    if (!address || !isAddress(address)) {
+      return NextResponse.json(
+        { error: "A valid address parameter is required" },
+        { status: 400 }
+      );
+    }
+
+    const normalizedAddress = address.toLowerCase();
+
+    // Check if there is an active push subscription record
+    const sub = db
+      .prepare("SELECT endpoint, created_at FROM push_subscriptions WHERE LOWER(address) = ? LIMIT 1")
+      .get(normalizedAddress) as any;
+
+    // Check freelancer profile push preference
+    const profile = db
+      .prepare("SELECT notify_push FROM freelancers WHERE LOWER(address) = ?")
+      .get(normalizedAddress) as any;
+
+    const hasSubscription = Boolean(sub);
+    const notifyPush = profile ? Boolean(profile.notify_push) : false;
+
+    return NextResponse.json({
+      subscribed: hasSubscription && (profile ? notifyPush : true),
+      hasServerSubscription: hasSubscription,
+      notifyPush,
+      endpoint: sub ? sub.endpoint : null,
+    });
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || "Failed to check subscription status" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(req: Request) {
   try {
     const body = await req.json();
@@ -66,6 +107,7 @@ export async function DELETE(req: Request) {
       db.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?").run(endpoint);
     } else if (address && isAddress(address)) {
       db.prepare("DELETE FROM push_subscriptions WHERE LOWER(address) = ?").run(address.toLowerCase());
+      db.prepare("UPDATE freelancers SET notify_push = 0 WHERE LOWER(address) = ?").run(address.toLowerCase());
     }
 
     return NextResponse.json({
