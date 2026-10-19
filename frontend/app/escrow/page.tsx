@@ -134,7 +134,7 @@ export default function EscrowPage() {
                 className="input w-full"
               />
               <p className="text-xs text-stone-500 mt-1">
-                If you don't approve submitted work within this period, the freelancer can auto-claim funds.
+                If you don&apos;t approve submitted work within this period, the freelancer can auto-claim funds.
               </p>
             </div>
 

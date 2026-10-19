@@ -26,7 +26,7 @@ export default function Profile() {
         <div className="text-center">
           <User className="h-12 w-12 text-amber-500 mx-auto mb-4" />
           <p className="text-stone-300 text-lg mb-2">Connect your wallet to view your dashboard</p>
-          <p className="text-stone-500 text-sm">Click "Connect MetaMask" in the top navigation bar</p>
+          <p className="text-stone-500 text-sm">Click &quot;Connect MetaMask&quot; in the top navigation bar</p>
         </div>
       </div>
     );

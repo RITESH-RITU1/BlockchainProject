@@ -4,7 +4,7 @@
   "description": "A secure, blockchain-based escrow platform that revolutionizes freelance payments through smart contract automation and milestone-based deliverables.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test test/Marketplace.test.cjs test/Escrow.test.mjs"
   },
   "repository": {
     "type": "git",
