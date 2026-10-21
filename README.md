@@ -104,10 +104,30 @@ Total: 13 passed, 0 failed
 ```
 
 ### Step 4: Launch the Frontend
+
+#### Running on macOS (Quick Launch)
+To run the frontend directly on macOS:
+
+```bash
+cd "/Users/riteshdebnath/BLOCKCHAIN ENHANCED/frontend" && npm run dev
+```
+
+1. Open **Terminal** on macOS.
+2. Copy and paste the command above and press **Enter**.
+3. Wait until Next.js displays `"Ready"`.
+4. Open [http://localhost:3000](http://localhost:3000) in a browser.
+5. Keep the Terminal window open while using the local website.
+6. Press **Ctrl+C** in Terminal to stop the development server when finished.
+
+#### Running on Other Machines / Repositories
+For other developers who clone the repository, run the following portable commands from the project root (make sure dependencies are installed first with `npm install` if they are not already installed):
+
 ```bash
 cd frontend
+npm install
 npm run dev
 ```
+
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
