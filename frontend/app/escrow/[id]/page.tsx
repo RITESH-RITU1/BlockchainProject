@@ -5,12 +5,16 @@ import { useState, useEffect } from "react";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { ESCROW_ABI, ESCROW_CONTRACT_ADDRESS } from "@/config/contract";
 import { formatEther } from "viem";
+import { useGasTracker } from "@/context/GasContext";
+import { Fuel } from "lucide-react";
 
 export default function EscrowDetail() {
   const { id } = useParams();
   const milestoneId = BigInt(id as string);
   const { address } = useAccount();
   const { writeContract, isPending } = useWriteContract();
+  const { trackTransaction, openGasModal } = useGasTracker();
+  const [currentTxDetails, setCurrentTxDetails] = useState<any>(null);
 
   const { data: milestoneData, refetch } = useReadContract({
     address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
@@ -56,63 +60,123 @@ export default function EscrowDetail() {
   const deadlinePassed = timeLeft === 0;
 
   const handleSubmitWork = () => {
-    writeContract({
-      address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
-      abi: ESCROW_ABI,
-      functionName: "submitWork",
-      args: [milestoneId],
-      maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 100000000n,
-    }, { onSuccess: () => refetch() });
+    writeContract(
+      {
+        address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
+        abi: ESCROW_ABI,
+        functionName: "submitWork",
+        args: [milestoneId],
+      },
+      {
+        onSuccess: async (txHash) => {
+          refetch();
+          if (txHash) {
+            const details = await trackTransaction(txHash, "Submit Milestone Work");
+            if (details) setCurrentTxDetails(details);
+          }
+        },
+      }
+    );
   };
 
   const handleReleasePayment = () => {
-    writeContract({
-      address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
-      abi: ESCROW_ABI,
-      functionName: "releasePayment",
-      args: [milestoneId],
-      maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 100000000n,
-    }, { onSuccess: () => refetch() });
+    writeContract(
+      {
+        address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
+        abi: ESCROW_ABI,
+        functionName: "releasePayment",
+        args: [milestoneId],
+      },
+      {
+        onSuccess: async (txHash) => {
+          refetch();
+          if (txHash) {
+            const details = await trackTransaction(txHash, "Release Milestone Payment");
+            if (details) setCurrentTxDetails(details);
+          }
+        },
+      }
+    );
   };
 
   const handleRejectWork = () => {
-    writeContract({
-      address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
-      abi: ESCROW_ABI,
-      functionName: "rejectWork",
-      args: [milestoneId],
-      maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 100000000n,
-    }, { onSuccess: () => refetch() });
+    writeContract(
+      {
+        address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
+        abi: ESCROW_ABI,
+        functionName: "rejectWork",
+        args: [milestoneId],
+      },
+      {
+        onSuccess: async (txHash) => {
+          refetch();
+          if (txHash) {
+            const details = await trackTransaction(txHash, "Reject Work & Open Dispute");
+            if (details) setCurrentTxDetails(details);
+          }
+        },
+      }
+    );
   };
 
   const handleClaimAutoRelease = () => {
-    writeContract({
-      address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
-      abi: ESCROW_ABI,
-      functionName: "claimDefaultPayout",
-      args: [milestoneId],
-      maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 100000000n,
-    }, { onSuccess: () => refetch() });
+    writeContract(
+      {
+        address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
+        abi: ESCROW_ABI,
+        functionName: "claimDefaultPayout",
+        args: [milestoneId],
+      },
+      {
+        onSuccess: async (txHash) => {
+          refetch();
+          if (txHash) {
+            const details = await trackTransaction(txHash, "Claim Default Payout");
+            if (details) setCurrentTxDetails(details);
+          }
+        },
+      }
+    );
   };
 
   const handleResolveToFreelancer = () => {
-    writeContract({
-      address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
-      abi: ESCROW_ABI,
-      functionName: "resolveDispute",
-      args: [milestoneId, freelancer],
-      maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 100000000n,
-    }, { onSuccess: () => refetch() });
+    writeContract(
+      {
+        address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
+        abi: ESCROW_ABI,
+        functionName: "resolveDispute",
+        args: [milestoneId, freelancer],
+      },
+      {
+        onSuccess: async (txHash) => {
+          refetch();
+          if (txHash) {
+            const details = await trackTransaction(txHash, "Resolve Dispute (Pay Freelancer)");
+            if (details) setCurrentTxDetails(details);
+          }
+        },
+      }
+    );
   };
 
   const handleResolveToClient = () => {
-    writeContract({
-      address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
-      abi: ESCROW_ABI,
-      functionName: "resolveDispute",
-      args: [milestoneId, client],
-      maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 100000000n,
-    }, { onSuccess: () => refetch() });
+    writeContract(
+      {
+        address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
+        abi: ESCROW_ABI,
+        functionName: "resolveDispute",
+        args: [milestoneId, client],
+      },
+      {
+        onSuccess: async (txHash) => {
+          refetch();
+          if (txHash) {
+            const details = await trackTransaction(txHash, "Resolve Dispute (Refund Client)");
+            if (details) setCurrentTxDetails(details);
+          }
+        },
+      }
+    );
   };
 
   const getStateText = () => {
@@ -136,6 +200,21 @@ export default function EscrowDetail() {
             <strong className="text-stone-400">Time Left:</strong> {timeLeft > 0 ? `${Math.floor(timeLeft / 86400)}d ${Math.floor((timeLeft % 86400) / 3600)}h` : "Deadline Passed"}
           </p>
         </div>
+
+        {currentTxDetails && (
+          <div className="mb-4 p-3 rounded-xl bg-amber-950/20 border border-amber-500/30 flex items-center justify-between">
+            <span className="text-xs text-amber-300 font-medium">
+              Last Transaction: {currentTxDetails.actionName} ({currentTxDetails.status})
+            </span>
+            <button
+              onClick={() => openGasModal(currentTxDetails)}
+              className="flex items-center gap-1.5 px-3 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40 text-xs font-semibold transition-colors"
+            >
+              <Fuel className="h-3.5 w-3.5" />
+              View Gas Details
+            </button>
+          </div>
+        )}
 
         <div className="flex flex-col gap-4 mt-6">
           {/* Client View */}

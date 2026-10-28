@@ -7,6 +7,7 @@ import { useAccount, useWriteContract, useSignMessage } from "wagmi";
 import { parseEther, isAddress } from "viem";
 import { ESCROW_ABI, ESCROW_CONTRACT_ADDRESS } from "@/config/contract";
 import { getOrRequestAuthToken } from "@/lib/authClient";
+import { useGasTracker } from "@/context/GasContext";
 import {
   Lock,
   CheckCircle,
@@ -23,6 +24,7 @@ import {
   Calendar,
   Sparkles,
   ExternalLink,
+  Fuel,
 } from "lucide-react";
 import { arbitrumSepolia } from "wagmi/chains";
 
@@ -35,6 +37,7 @@ function ClientDashboardContent() {
   const { address, chainId } = useAccount();
   const { writeContract, isPending: isEscrowPending } = useWriteContract();
   const { signMessageAsync } = useSignMessage();
+  const { trackTransaction, openGasModal, lastGasDetails } = useGasTracker();
 
   // Active view tab
   const [activeTab, setActiveTab] = useState<"post_job" | "my_jobs" | "fund_escrow">(
@@ -48,6 +51,7 @@ function ClientDashboardContent() {
   const [durationDays, setDurationDays] = useState("7");
   const [escrowStatus, setEscrowStatus] = useState<"idle" | "success" | "error">("idle");
   const [escrowError, setEscrowError] = useState("");
+  const [currentTxDetails, setCurrentTxDetails] = useState<any>(null);
 
   useEffect(() => {
     if (prefillAddress) {
@@ -120,15 +124,17 @@ function ClientDashboardContent() {
         functionName: "createMilestone",
         args: [freelancer as `0x${string}`, BigInt(parseInt(durationDays) * 86400), description],
         value: parseEther(amount),
-        maxFeePerGas: 1000000000n, // 1 gwei
-        maxPriorityFeePerGas: 100000000n, // 0.1 gwei
       },
       {
-        onSuccess: () => {
+        onSuccess: async (txHash) => {
           setEscrowStatus("success");
           setFreelancer("");
           setAmount("");
           setDescription("");
+          if (txHash) {
+            const details = await trackTransaction(txHash, "Fund Milestone Escrow");
+            if (details) setCurrentTxDetails(details);
+          }
         },
         onError: (err) => {
           setEscrowStatus("error");
@@ -568,9 +574,23 @@ function ClientDashboardContent() {
                 </div>
 
                 {escrowStatus === "success" && (
-                  <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-800 text-emerald-400 p-3 rounded-lg text-xs">
-                    <CheckCircle className="h-4 w-4 flex-shrink-0" />
-                    <span>Milestone funded successfully! The freelancer can now view and submit work on-chain.</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2 bg-emerald-950/40 border border-emerald-800 text-emerald-400 p-3 rounded-lg text-xs">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                        <span>Milestone funded successfully! The freelancer can now view and submit work on-chain.</span>
+                      </div>
+                      {currentTxDetails && (
+                        <button
+                          type="button"
+                          onClick={() => openGasModal(currentTxDetails)}
+                          className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 font-semibold text-xs transition-colors"
+                        >
+                          <Fuel className="h-3.5 w-3.5" />
+                          View Gas Details
+                        </button>
+                      )}
+                    </div>
                   </div>
                 )}
 

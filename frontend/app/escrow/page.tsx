@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useAccount, useWriteContract } from "wagmi";
 import { parseEther, isAddress } from "viem";
 import { ESCROW_ABI, ESCROW_CONTRACT_ADDRESS } from "@/config/contract";
-import { Plus, Loader2, CheckCircle, AlertCircle, ArrowRight } from "lucide-react";
+import { Plus, Loader2, CheckCircle, AlertCircle, ArrowRight, Fuel } from "lucide-react";
 import { arbitrumSepolia } from "wagmi/chains";
+import { useGasTracker } from "@/context/GasContext";
 
 export default function EscrowPage() {
   const { address, chainId } = useAccount();
   const { writeContract, isPending } = useWriteContract();
+  const { trackTransaction, openGasModal } = useGasTracker();
 
   const [freelancer, setFreelancer] = useState("");
   const [amount, setAmount] = useState("");
@@ -17,6 +19,7 @@ export default function EscrowPage() {
   const [durationDays, setDurationDays] = useState("7");
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [currentTxDetails, setCurrentTxDetails] = useState<any>(null);
 
   const createMilestone = () => {
     if (!freelancer || !amount || !description) {
@@ -44,14 +47,17 @@ export default function EscrowPage() {
         functionName: "createMilestone",
         args: [freelancer as `0x${string}`, durationSeconds, description],
         value: parseEther(amount),
-        gas: 300000n,
       },
       {
-        onSuccess: () => {
+        onSuccess: async (txHash) => {
           setStatus("success");
           setFreelancer("");
           setAmount("");
           setDescription("");
+          if (txHash) {
+            const details = await trackTransaction(txHash, "Fund Milestone Escrow");
+            if (details) setCurrentTxDetails(details);
+          }
         },
         onError: (err) => {
           setStatus("error");
@@ -140,9 +146,21 @@ export default function EscrowPage() {
 
             {/* Status Messages */}
             {status === "success" && (
-              <div className="flex items-center space-x-2 text-emerald-400 bg-emerald-950/30 p-4 rounded-lg border border-emerald-800">
-                <CheckCircle className="h-5 w-5" />
-                <span className="font-medium">Milestone created successfully!</span>
+              <div className="flex items-center justify-between gap-2 text-emerald-400 bg-emerald-950/30 p-4 rounded-lg border border-emerald-800">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="font-medium">Milestone created successfully!</span>
+                </div>
+                {currentTxDetails && (
+                  <button
+                    type="button"
+                    onClick={() => openGasModal(currentTxDetails)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold transition-colors"
+                  >
+                    <Fuel className="h-3.5 w-3.5" />
+                    View Gas Details
+                  </button>
+                )}
               </div>
             )}
             {status === "error" && (

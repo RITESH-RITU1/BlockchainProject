@@ -6,6 +6,8 @@ import { useAccount, useReadContract, useWriteContract, useSignMessage } from "w
 import { ESCROW_ABI, ESCROW_CONTRACT_ADDRESS } from "@/config/contract";
 import { formatEther } from "viem";
 import { getOrRequestAuthToken } from "@/lib/authClient";
+import { useGasTracker } from "@/context/GasContext";
+import { Fuel } from "lucide-react";
 import {
   getPushPermissionState,
   checkCurrentSubscription,
@@ -61,6 +63,8 @@ function CountdownTimer({ deadline }: { deadline: number }) {
 function MilestoneView({ milestoneId }: { milestoneId: bigint }) {
   const { address } = useAccount();
   const { writeContract, isPending } = useWriteContract();
+  const { trackTransaction, openGasModal } = useGasTracker();
+  const [currentTxDetails, setCurrentTxDetails] = useState<any>(null);
   const { data, refetch, isLoading } = useReadContract({
     address: ESCROW_CONTRACT_ADDRESS as `0x${string}`,
     abi: ESCROW_ABI,
@@ -85,10 +89,16 @@ function MilestoneView({ milestoneId }: { milestoneId: bigint }) {
         abi: ESCROW_ABI,
         functionName: "submitWork",
         args: [milestoneId],
-        maxFeePerGas: 1000000000n,
-        maxPriorityFeePerGas: 100000000n,
       },
-      { onSuccess: () => refetch() }
+      {
+        onSuccess: async (txHash) => {
+          refetch();
+          if (txHash) {
+            const details = await trackTransaction(txHash, "Submit Milestone Work");
+            if (details) setCurrentTxDetails(details);
+          }
+        },
+      }
     );
 
   const autoRelease = () =>
@@ -98,10 +108,16 @@ function MilestoneView({ milestoneId }: { milestoneId: bigint }) {
         abi: ESCROW_ABI,
         functionName: "claimDefaultPayout",
         args: [milestoneId],
-        maxFeePerGas: 1000000000n,
-        maxPriorityFeePerGas: 100000000n,
       },
-      { onSuccess: () => refetch() }
+      {
+        onSuccess: async (txHash) => {
+          refetch();
+          if (txHash) {
+            const details = await trackTransaction(txHash, "Claim Default Payout");
+            if (details) setCurrentTxDetails(details);
+          }
+        },
+      }
     );
 
   return (
@@ -163,6 +179,20 @@ function MilestoneView({ milestoneId }: { milestoneId: bigint }) {
             Claim Auto-Release (Ghosting Protection)
           </button>
           <p className="text-xs text-stone-500">Available if client does not approve submitted work before the deadline.</p>
+
+          {currentTxDetails && (
+            <div className="pt-2 flex items-center justify-between p-2.5 rounded-lg bg-orange-950/30 border border-orange-500/30">
+              <span className="text-xs text-orange-300">Transaction mined</span>
+              <button
+                type="button"
+                onClick={() => openGasModal(currentTxDetails)}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold"
+              >
+                <Fuel className="h-3.5 w-3.5" />
+                View Gas Details
+              </button>
+            </div>
+          )}
         </div>
       )}
       {state === 4 && (
